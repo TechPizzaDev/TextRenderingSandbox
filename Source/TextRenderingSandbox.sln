@@ -5,9 +5,9 @@ VisualStudioVersion = 16.0.29409.12
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TextRenderingSandbox", "TextRenderingSandbox\TextRenderingSandbox.csproj", "{3993BF5D-2EE2-4DDC-9C49-0340833B935C}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "StbTrueTypeSharp", "ThirdParty\StbTrueTypeSharp\src\StbTrueTypeSharp\StbTrueTypeSharp.csproj", "{2C394B99-C231-460F-8D80-3FE902F5679C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "StbTrueTypeSharp", "..\ThirdParty\StbTrueTypeSharp\src\StbTrueTypeSharp\StbTrueTypeSharp.csproj", "{2C394B99-C231-460F-8D80-3FE902F5679C}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "StbSharp.Shared", "ThirdParty\StbTrueTypeSharp\modules\StbSharp.Shared\src\StbSharp.Shared\StbSharp.Shared.csproj", "{41F95878-6F08-4A95-99DA-0F6A1F106AE5}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "StbSharp.Shared", "..\ThirdParty\StbTrueTypeSharp\modules\StbSharp.Shared\src\StbSharp.Shared\StbSharp.Shared.csproj", "{41F95878-6F08-4A95-99DA-0F6A1F106AE5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
