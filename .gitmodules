@@ -1,0 +1,3 @@
+[submodule "ThirdParty/StbTrueTypeSharp"]
+	path = ThirdParty/StbTrueTypeSharp
+	url = https://github.com/TechnologicalPizza/StbSharp.TrueType
