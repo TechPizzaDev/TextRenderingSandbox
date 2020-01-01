@@ -12,8 +12,8 @@ namespace TextRenderingSandbox
         public MaxRectsBinPack _packer;// TODO: optimize packer (e.g sorting every 100 rects)
         public byte[] _bitmap; // TODO: change to MonoGame.Imaging.Image<Alpha8>
 
-        public MaxRectsBinPack.FreeRectChoiceHeuristic PackMethod { get; set; } =
-            MaxRectsBinPack.FreeRectChoiceHeuristic.RectBottomLeftRule;
+        public FreeRectChoiceHeuristic PackMethod { get; set; } =
+            FreeRectChoiceHeuristic.RectBottomLeftRule;
         
         public FontGlyphCacheRegion(int width, int height)
         {
@@ -33,34 +33,33 @@ namespace TextRenderingSandbox
 
         public bool GetGlyphRect(
             TTFontInfo fontInfo, int glyph, int padding,
-            TTIntPoint oversample, float fontSize, 
+            TTIntPoint oversample, float fontSize, FontSizeUnitType unitType,
             out TTPoint scale, out Rect packedRect, out Rect charRect)
         {
-            scale = fontSize > 0
-                ? ScaleForPixelHeight(fontInfo, fontSize)
-                : ScaleForMappingEmToPixels(fontInfo, -fontSize);
-
             if (glyph == 0)
             {
+                scale = default;
                 packedRect = default;
                 charRect = default;
                 return false;
             }
-            else
-            {
-                GetGlyphBitmapBoxSubpixel(
-                    fontInfo, glyph, scale * oversample, TTPoint.Zero, out var glyphBox);
 
-                int w = glyphBox.w + padding + oversample.x - 1;
-                int h = glyphBox.h + padding + oversample.y - 1;
+            scale = unitType == FontSizeUnitType.Em
+                ? ScaleForMappingEmToPixels(fontInfo, fontSize)
+                : ScaleForPixelHeight(fontInfo, fontSize);
 
-                int rw = ToNextNearestMultiple(w, 2);
-                int rh = ToNextNearestMultiple(h, 2);
-                packedRect = _packer.Insert(rw, rh, PackMethod);
-                charRect = new Rect(packedRect.X, packedRect.Y, w, h);
+            GetGlyphBitmapBoxSubpixel(
+                fontInfo, glyph, scale * oversample, TTPoint.Zero, out var glyphBox);
 
-                return packedRect.Width != 0 && packedRect.Height != 0;
-            }
+            int w = glyphBox.w + padding + oversample.x - 1;
+            int h = glyphBox.h + padding + oversample.y - 1;
+
+            int rw = ToNextNearestMultiple(w, 2);
+            int rh = ToNextNearestMultiple(h, 2);
+            packedRect = _packer.Insert(rw, rh, PackMethod);
+            charRect = new Rect(packedRect.X, packedRect.Y, w, h);
+
+            return packedRect.Width != 0 && packedRect.Height != 0;
         }
 
         int ToNextNearestMultiple(int value, int multiple)
@@ -72,6 +71,7 @@ namespace TextRenderingSandbox
         {
             if (x < 0)
                 return 0;
+
             --x;
             x |= x >> 1;
             x |= x >> 2;

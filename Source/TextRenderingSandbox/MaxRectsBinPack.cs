@@ -21,6 +21,15 @@ namespace TextRenderingSandbox
         }
     }
 
+    public enum FreeRectChoiceHeuristic
+    {
+        RectBestShortSideFit, ///< -BSSF: Positions the rectangle against the short side of a free rectangle into which it fits the best.
+        RectBestLongSideFit, ///< -BLSF: Positions the rectangle against the long side of a free rectangle into which it fits the best.
+        RectBestAreaFit, ///< -BAF: Positions the rectangle into the smallest free rect into which it fits.
+        RectBottomLeftRule, ///< -BL: Does the Tetris placement.
+        RectContactPointRule ///< -CP: Choosest the placement where the rectangle touches other rects as much as possible.
+    }
+
     public class MaxRectsBinPack
     {
         public int BinWidth { get; private set; }
@@ -29,15 +38,6 @@ namespace TextRenderingSandbox
 
         public ListArray<Rect> UsedRectangles { get; } = new ListArray<Rect>();
         public ListArray<Rect> FreeRectangles { get; } = new ListArray<Rect>();
-
-        public enum FreeRectChoiceHeuristic
-        {
-            RectBestShortSideFit, ///< -BSSF: Positions the rectangle against the short side of a free rectangle into which it fits the best.
-            RectBestLongSideFit, ///< -BLSF: Positions the rectangle against the long side of a free rectangle into which it fits the best.
-            RectBestAreaFit, ///< -BAF: Positions the rectangle into the smallest free rect into which it fits.
-            RectBottomLeftRule, ///< -BL: Does the Tetris placement.
-            RectContactPointRule ///< -CP: Choosest the placement where the rectangle touches other rects as much as possible.
-        };
 
         public MaxRectsBinPack(int width, int height, bool rotations = true)
         {

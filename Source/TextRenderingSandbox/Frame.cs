@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Runtime.InteropServices;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -17,7 +16,7 @@ using static StbSharp.StbTrueType;
 
 namespace TextRenderingSandbox
 {
-    class FontGlyphCache
+    internal class FontGlyphCache
     {
         private FontGlyphCacheRegion[] _regions;
 
@@ -36,7 +35,7 @@ namespace TextRenderingSandbox
             _regions = new FontGlyphCacheRegion[UnitCount];
         }
 
-        
+
     }
 
     public class Frame : Game
@@ -52,7 +51,7 @@ namespace TextRenderingSandbox
         private SpriteFont _bitmapFont;
 
         private Texture2D _bitmapTex;
-        
+
         private Stopwatch _watch = new Stopwatch();
 
         private FontGlyphCacheRegion _glyphCacheRegion = new FontGlyphCacheRegion(1024, 1024);
@@ -65,8 +64,8 @@ namespace TextRenderingSandbox
         public Frame()
         {
             _graphics = new GraphicsDeviceManager(this);
-            _graphics.PreferredBackBufferWidth = 1366 * 2;
-            _graphics.PreferredBackBufferHeight = 768 * 2;
+            _graphics.PreferredBackBufferWidth = 1366;
+            _graphics.PreferredBackBufferHeight = 768;
             Content.RootDirectory = "Content";
 
             IsFixedTimeStep = false;
@@ -112,7 +111,7 @@ namespace TextRenderingSandbox
 
             //_ranges.Enqueue(CharacterRange.Hiragana);
             //_ranges.Enqueue(CharacterRange.Katakana);
-            
+
             _ranges.Enqueue(CharacterRange.CjkSymbolsAndPunctuation);
             _ranges.Enqueue(CharacterRange.CjkUnifiedIdeographs);
 
@@ -168,11 +167,11 @@ namespace TextRenderingSandbox
 
             Console.WriteLine("glyph count: " + result.Glyphs.Count);
 
-            //SaveFontBitmap("bruh.png", result);
+            //var rgb = AlphaToRgb(result);
+            //SaveFontBitmap("bruh.png", FontBitmapWidth, FontBitmapHeight, result);
 
             var fontTexture = new Texture2D(
                 GraphicsDevice, FontBitmapWidth, FontBitmapHeight, false, SurfaceFormat.Alpha8);
-            var rgb = AlphaToRgb(result);
             fontTexture.SetData(result.Bitmap);
 
             _bitmapFont = CreateFont(fontTexture, result);
@@ -271,23 +270,23 @@ namespace TextRenderingSandbox
             return rgba;
         }
 
-        private void SaveFontBitmap(string fileName, FontBakerResult result)
+        private void SaveFontBitmap(string fileName, int width, int height, byte[] pixels)
         {
             using (var bitmap = new System.Drawing.Bitmap(
-                   FontBitmapWidth, FontBitmapHeight, System.Drawing.Imaging.PixelFormat.Format8bppIndexed))
+                width, height, System.Drawing.Imaging.PixelFormat.Format8bppIndexed))
             {
                 var palette = bitmap.Palette;
                 for (int i = 0; i < palette.Entries.Length; i++)
                     palette.Entries[i] = System.Drawing.Color.FromArgb(i, 255, 255, 255);
                 bitmap.Palette = palette;
 
-                var pixels = bitmap.LockBits(new System.Drawing.Rectangle(0, 0, bitmap.Width, bitmap.Height),
+                var pixelData = bitmap.LockBits(new System.Drawing.Rectangle(0, 0, bitmap.Width, bitmap.Height),
                     System.Drawing.Imaging.ImageLockMode.WriteOnly,
                     System.Drawing.Imaging.PixelFormat.Format8bppIndexed);
 
-                Marshal.Copy(result.Bitmap, 0, pixels.Scan0, result.Bitmap.Length);
+                Marshal.Copy(pixels, 0, pixelData.Scan0, pixels.Length);
 
-                bitmap.UnlockBits(pixels);
+                bitmap.UnlockBits(pixelData);
                 bitmap.Save(fileName);
             }
         }
@@ -299,10 +298,24 @@ namespace TextRenderingSandbox
         private float _tick;
         private int _processed;
         private int _charCodepoint;
+        private Queue<CharacterRange> _ranges = new Queue<CharacterRange>();
+        private Random random = new Random();
 
-        Queue<CharacterRange> _ranges = new Queue<CharacterRange>();
+        private List<GlyphResult> _glyphResultList = new List<GlyphResult>();
 
-        Random random = new Random();
+        private struct GlyphResult
+        {
+            public int Glyph;
+            public TTPoint Scale;
+            public Rect CharRect;
+
+            public GlyphResult(int glyph, TTPoint scale, Rect charRect)
+            {
+                Glyph = glyph;
+                Scale = scale;
+                CharRect = charRect;
+            }
+        }
 
         protected override void Update(GameTime gameTime)
         {
@@ -313,7 +326,7 @@ namespace TextRenderingSandbox
             var pp = _glyphCacheRegion._packer;
 
             int built = 0;
-            for (int i = 0; i < 100; i++)
+            for (int i = 0; i < 500; i++)
             {
                 if (pp.FreeRectangles.Count > 100)
                     CompressPacker(pp);
@@ -323,19 +336,22 @@ namespace TextRenderingSandbox
                 {
                     _tick = 0;
 
-                    TICK:
+                TICK:
                     if (_charCodepoint < _ranges.Peek().End)
                     {
                         int glyph = StbTrueType.FindGlyphIndex(_ZCOOLXiaoWeiFontInfo, _charCodepoint);
 
                         bool succ = _glyphCacheRegion.GetGlyphRect(
-                            _ZCOOLXiaoWeiFontInfo, glyph, 0, new TTIntPoint(1), 12, //random.Next(24, 128) / 2f,
+                            _ZCOOLXiaoWeiFontInfo, glyph, 0, TTIntPoint.One, 12, FontSizeUnitType.Pixel, //random.Next(24, 128) / 2f, 
                             out TTPoint scale, out Rect packedRect, out Rect charRect);
 
                         //if (packedRect.Width != 0 && packedRect.Height != 0 &&
                         //    (packedRect.Width < charRect.Width ||
                         //    packedRect.Height < charRect.Height))
                         //    throw new Exception();
+
+                        if (succ)
+                            _glyphResultList.Add(new GlyphResult(glyph, scale, charRect));
 
                         //if (succ && packedRect.Width != 0 && packedRect.Height != 0)
                         //{
@@ -355,7 +371,9 @@ namespace TextRenderingSandbox
                     {
                         _ranges.Dequeue();
                         if (_ranges.Count > 0)
+                        {
                             _charCodepoint = _ranges.Peek().Start;
+                        }
                         else
                         {
                             //_graphics.IsFullScreen = true;
@@ -382,6 +400,15 @@ namespace TextRenderingSandbox
                             Console.WriteLine("Done");
 
                             CompressPacker(pp);
+
+                            foreach (var glyphResult in _glyphResultList)
+                                _glyphCacheRegion.DrawGlyph(
+                                    _ZCOOLXiaoWeiFontInfo,
+                                    glyphResult.Glyph,
+                                    glyphResult.Scale,
+                                    glyphResult.CharRect);
+
+                            built++;
                         }
                     }
                 }
@@ -394,6 +421,10 @@ namespace TextRenderingSandbox
                         GraphicsDevice, pp.BinWidth, pp.BinHeight, false, SurfaceFormat.Alpha8);
 
                 _glyphCacheTexture.SetData(_glyphCacheRegion._bitmap);
+
+                var pixels = new byte[_glyphCacheTexture.Width * _glyphCacheTexture.Height];
+                _glyphCacheTexture.GetData(pixels);
+                SaveFontBitmap("nice.png", _glyphCacheTexture.Width, _glyphCacheTexture.Height, pixels);
             }
         }
 
@@ -402,23 +433,15 @@ namespace TextRenderingSandbox
         private void CompressPacker(MaxRectsBinPack packer)
         {
             tmpList.AddRange(packer.UsedRectangles);
-            tmpList.Sort((x, y) =>
-            {
-                int xA = x.Area;
-                int yA = y.Area;
-                if (xA < yA)
-                    return -1;
-                if (xA > yA)
-                    return 1;
-                return 0;
-            });
+            tmpList.Sort((x, y) => x.Area.CompareTo(y.Area));
+
             packer.Init(packer.BinWidth, packer.BinHeight, rotations: true);
-         
+
             for (int i = 0; i < tmpList.Count; i++)
             {
                 Rect rrr = tmpList[i];
                 Rect repacked = packer.Insert(
-                    rrr.Width, rrr.Height, MaxRectsBinPack.FreeRectChoiceHeuristic.RectBottomLeftRule);
+                    rrr.Width, rrr.Height, FreeRectChoiceHeuristic.RectBottomLeftRule);
 
                 if (repacked.Width == 0 || repacked.Height == 0)
                     throw new Exception("Compressing packer failed.");
@@ -453,7 +476,7 @@ namespace TextRenderingSandbox
                 //_spriteBatch.End();
             }
 
-            var mat = Matrix.CreateScale(0.66f);
+            var mat = Matrix.CreateScale(1f);
 
             _spriteBatch.Begin(blendState: BlendState.NonPremultiplied, effect: _transparentAlpha8Effect, transformMatrix: mat);
 
@@ -462,19 +485,23 @@ namespace TextRenderingSandbox
             //foreach (Rect free in pack.FreeRectangles)
             //    _spriteBatch.DrawRectangle(new RectangleF(free.X, free.Y, free.Width, free.Height), Color.Green, 1, 0);
 
-            int u = 0; // Math.Max(0, pack.UsedRectangles.Count - 250);
-            for (; u < pack.UsedRectangles.Count; u++)
+            if (_glyphCacheTexture == null)
             {
-                var used = pack.UsedRectangles[u];
-                _spriteBatch.FillRectangle(new RectangleF(used.X, used.Y, used.Width, used.Height), Color.Yellow, 0);
-            }
+                int u = 0; // Math.Max(0, pack.UsedRectangles.Count - 250);
+                for (; u < pack.UsedRectangles.Count; u++)
+                {
+                    var used = pack.UsedRectangles[u];
+                    _spriteBatch.FillRectangle(new RectangleF(used.X, used.Y, used.Width, used.Height), Color.Yellow, 0);
+                }
 
-            Console.WriteLine("P: " + _processed + " | Used: " + pack.UsedRectangles.Count + 
-                " | Free: " + pack.FreeRectangles.Count + " | " +  Math.Round(pack.Occupancy() * 100) + "%");
+                Console.WriteLine("P: " + _processed + " | Used: " + pack.UsedRectangles.Count +
+                    " | Free: " + pack.FreeRectangles.Count + " | " + Math.Round(pack.Occupancy() * 100) + "%");
+            }
 
             //_spriteBatch.DrawRectangle(new RectangleF(0, 0, pack.BinWidth, pack.BinHeight), Color.Red, 1, 0);
 
-            //_spriteBatch.Draw(_glyphCacheTexture, new Vector2(0, 0), Color.White);
+            if (_glyphCacheTexture != null)
+                _spriteBatch.Draw(_glyphCacheTexture, new Vector2(0, 0), Color.White);
 
             if (false)
             {

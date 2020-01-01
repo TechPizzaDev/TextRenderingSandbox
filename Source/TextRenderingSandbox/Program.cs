@@ -1,7 +1,9 @@
 ﻿using System;
-using System.Drawing;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Microsoft.Xna.Framework;
+using MonoGame.Extended;
 using Color = Microsoft.Xna.Framework.Color;
 using DColor = System.Drawing.Color;
 
