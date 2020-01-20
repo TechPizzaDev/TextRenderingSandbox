@@ -54,6 +54,7 @@
     <Compile Include="Lib\FontFamily.cs" />
     <Compile Include="Lib\FontFamilyCollection.cs" />
     <Compile Include="Lib\FontGlyphCacheRegion.cs" />
+    <Compile Include="Lib\FontSizeUnitType.cs" />
     <Compile Include="Lib\FontStyle.cs" />
     <Compile Include="Lib\ListArray.cs" />
     <Compile Include="Lib\MonoGame.Utilities\IReadOnlySet.cs" />
@@ -154,11 +155,6 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\ThirdParty\StbTrueTypeSharp\modules\StbSharp.Shared\src\StbSharp.Shared\StbSharp.Shared.csproj">
-      <Project>{41f95878-6f08-4a95-99da-0f6a1f106ae5}</Project>
-      <Name>StbSharp.Shared</Name>
-    </ProjectReference>
-	
     <ProjectReference Include="..\..\ThirdParty\StbTrueTypeSharp\src\StbTrueTypeSharp\StbTrueTypeSharp.csproj">
       <Project>{2c394b99-c231-460f-8d80-3fe902f5679c}</Project>
       <Name>StbTrueTypeSharp</Name>

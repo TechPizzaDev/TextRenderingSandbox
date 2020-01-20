@@ -29,38 +29,33 @@ namespace TextRenderingSandbox
             _bufferWidth = 256;
             _bufferHeight = 256;
 
-            _packer = new MaxRectsBinPack(_width, _height, rotations: true);
+            _packer = new MaxRectsBinPack(_width, _height, rotations: false);
             _bitmap = new byte[_width * _height];
             _bufferBitmap = new byte[_bufferWidth * _bufferHeight];
         }
 
-        public void DrawGlyph(TTFontInfo fontInfo, int glyph, TTPoint scale, Rect charRect, bool rotated)
+        public void DrawGlyph(TTFontInfo fontInfo, int glyph, TTPoint scale, Rect charRect)
         {
-            int w = charRect.Width;
-            int h = charRect.Height;
+            int width = charRect.Width;
+            int height = charRect.Height;
 
             MakeGlyphBitmapSubpixel(
                 fontInfo,
                 _bufferBitmap,
-                w,
-                h,
+                width,
+                height,
                 out_stride: _bufferWidth,
                 scale,
                 shift: TTPoint.Zero,
                 pixelOffset: TTIntPoint.Zero,
                 glyph);
 
-            for (int y = 0; y < h; y++)
+            for (int y = 0; y < height; y++)
             {
-                for (int x = 0; x < w; x++)
+                for (int x = 0; x < width; x++)
                 {
-                    int dst;
-                    if (rotated)
-                        dst = y + charRect.X + (x + charRect.Y) * _width;
-                    else
-                        dst = x + charRect.X + (y + charRect.Y) * _width;
-
                     int src = x + y * _bufferWidth;
+                    int dst = x + charRect.X + (y + charRect.Y) * _width;
                     _bitmap[dst] = _bufferBitmap[src];
                 }
             }
@@ -125,6 +120,7 @@ namespace TextRenderingSandbox
         {
             if (x < 0)
                 return 0;
+
             --x;
             x |= x >> 1;
             x |= x >> 2;

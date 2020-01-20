@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Runtime.InteropServices;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -17,7 +16,7 @@ using static StbSharp.StbTrueType;
 
 namespace TextRenderingSandbox
 {
-    class FontGlyphCache
+    internal class FontGlyphCache
     {
         private FontGlyphCacheRegion[] _regions;
 
@@ -104,19 +103,19 @@ namespace TextRenderingSandbox
             var systemFonts = SystemFonts.GetSystemFonts();
             Console.WriteLine("System font count: " + systemFonts.Count);
 
-            _ranges.Enqueue(CharacterRange.BasicLatin);
-            _ranges.Enqueue(CharacterRange.Latin1Supplement);
-            _ranges.Enqueue(CharacterRange.LatinExtendedA);
-            _ranges.Enqueue(CharacterRange.LatinExtendedB);
-            _ranges.Enqueue(CharacterRange.Cyrillic);
-            _ranges.Enqueue(CharacterRange.CyrillicSupplement);
-            _ranges.Enqueue(CharacterRange.Greek);
+            //_ranges.Enqueue(CharacterRange.BasicLatin);
+            //_ranges.Enqueue(CharacterRange.Latin1Supplement);
+            //_ranges.Enqueue(CharacterRange.LatinExtendedA);
+            //_ranges.Enqueue(CharacterRange.LatinExtendedB);
+            //_ranges.Enqueue(CharacterRange.Cyrillic);
+            //_ranges.Enqueue(CharacterRange.CyrillicSupplement);
+            //_ranges.Enqueue(CharacterRange.Greek);
 
             //_ranges.Enqueue(CharacterRange.Hiragana);
             //_ranges.Enqueue(CharacterRange.Katakana);
 
-            //_ranges.Enqueue(CharacterRange.CjkSymbolsAndPunctuation);
-            //_ranges.Enqueue(CharacterRange.CjkUnifiedIdeographs);
+            _ranges.Enqueue(CharacterRange.CjkSymbolsAndPunctuation);
+            _ranges.Enqueue(CharacterRange.CjkUnifiedIdeographs);
 
             _charCodepoint = _ranges.Peek().Start;
         }
@@ -170,11 +169,11 @@ namespace TextRenderingSandbox
 
             Console.WriteLine("glyph count: " + result.Glyphs.Count);
 
-            //SaveFontBitmap("bruh.png", result);
+            //var rgb = AlphaToRgb(result);
+            //SaveFontBitmap("bruh.png", FontBitmapWidth, FontBitmapHeight, result);
 
             var fontTexture = new Texture2D(
                 GraphicsDevice, FontBitmapWidth, FontBitmapHeight, false, SurfaceFormat.Alpha8);
-            var rgb = AlphaToRgb(result);
             fontTexture.SetData(result.Bitmap);
 
             _bitmapFont = CreateFont(fontTexture, result);
@@ -273,23 +272,23 @@ namespace TextRenderingSandbox
             return rgba;
         }
 
-        private void SaveFontBitmap(string fileName, FontBakerResult result)
+        private void SaveFontBitmap(string fileName, int width, int height, byte[] pixels)
         {
             using (var bitmap = new System.Drawing.Bitmap(
-                   FontBitmapWidth, FontBitmapHeight, System.Drawing.Imaging.PixelFormat.Format8bppIndexed))
+                width, height, System.Drawing.Imaging.PixelFormat.Format8bppIndexed))
             {
                 var palette = bitmap.Palette;
                 for (int i = 0; i < palette.Entries.Length; i++)
                     palette.Entries[i] = System.Drawing.Color.FromArgb(i, 255, 255, 255);
                 bitmap.Palette = palette;
 
-                var pixels = bitmap.LockBits(new System.Drawing.Rectangle(0, 0, bitmap.Width, bitmap.Height),
+                var pixelData = bitmap.LockBits(new System.Drawing.Rectangle(0, 0, bitmap.Width, bitmap.Height),
                     System.Drawing.Imaging.ImageLockMode.WriteOnly,
                     System.Drawing.Imaging.PixelFormat.Format8bppIndexed);
 
-                Marshal.Copy(result.Bitmap, 0, pixels.Scan0, result.Bitmap.Length);
+                Marshal.Copy(pixels, 0, pixelData.Scan0, pixels.Length);
 
-                bitmap.UnlockBits(pixels);
+                bitmap.UnlockBits(pixelData);
                 bitmap.Save(fileName);
             }
         }
@@ -301,10 +300,24 @@ namespace TextRenderingSandbox
         private float _tick;
         private int _processed;
         private int _charCodepoint;
+        private Queue<CharacterRange> _ranges = new Queue<CharacterRange>();
+        private Random random = new Random();
 
-        Queue<CharacterRange> _ranges = new Queue<CharacterRange>();
+        private List<GlyphResult> _glyphResultList = new List<GlyphResult>();
 
-        Random random = new Random();
+        private struct GlyphResult
+        {
+            public int Glyph;
+            public TTPoint Scale;
+            public Rect CharRect;
+
+            public GlyphResult(int glyph, TTPoint scale, Rect charRect)
+            {
+                Glyph = glyph;
+                Scale = scale;
+                CharRect = charRect;
+            }
+        }
 
         protected override void Update(GameTime gameTime)
         {
@@ -312,28 +325,38 @@ namespace TextRenderingSandbox
             if (keyboard.IsKeyDown(Keys.Escape))
                 Exit();
 
+            var font = _ZCOOLXiaoWeiFontInfo;
             var pp = _glyphCacheRegion._packer;
 
+            int fails = 0;
             int built = 0;
-            for (int i = 0; i < 200; i++)
+
+            for (int i = 0; i < 100; i++)
             {
-                if (pp.FreeRectangles.Count > 100)
-                    CompressPacker(pp);
-
-                _tick += gameTime.GetElapsedSeconds();
-                if (_tick > 0f && _ranges.Count > 0)
+                if (_ranges.Count > 0)
                 {
-                    _tick = 0;
+                    TICK:
+                    if (fails > 0 || pp.FreeRectangles.Count > 200)
+                    {
+                        Console.WriteLine(fails);
 
-                TICK:
+                        Array.Clear(_glyphCacheRegion._bitmap, 0, _glyphCacheRegion._bitmap.Length);
+                        CompressPacker(pp);
+                        fails = 0;
+                    }
+
                     if (_charCodepoint < _ranges.Peek().End)
                     {
-                        var font = _droidSansFontInfo;
-
                         int glyph = StbTrueType.FindGlyphIndex(font, _charCodepoint);
+                        if (glyph == 0)
+                        {
+                            _charCodepoint++;
+                            i--;
+                            continue;
+                        }
 
                         bool succ = _glyphCacheRegion.GetGlyphRect(
-                            font, glyph, padding: 0, 64, //random.Next(24, 128) / 2f,
+                            font, glyph, padding: 0, random.Next(10, 20),
                             out TTPoint scale, out PackedRect packedRect, out Rect charRect);
 
                         if (succ)
@@ -341,8 +364,8 @@ namespace TextRenderingSandbox
                             if (packedRect.IsRotated)
                                 throw new Exception();
 
-                            //_glyphCacheRegion.DrawGlyph(font, glyph, scale, charRect);
-                            //built++;
+                            _glyphCacheRegion.DrawGlyph(font, glyph, scale, charRect);
+                            built++;
 
                             // TODO: fix this, it needs to be redrawn after compress
                         }
@@ -351,13 +374,18 @@ namespace TextRenderingSandbox
                         _charCodepoint++;
 
                         if (!succ)
+                        {
+                            fails++;
                             goto TICK;
+                        }
                     }
                     else
                     {
                         _ranges.Dequeue();
                         if (_ranges.Count > 0)
+                        {
                             _charCodepoint = _ranges.Peek().Start;
+                        }
                         else
                         {
                             //_graphics.IsFullScreen = true;
@@ -383,7 +411,18 @@ namespace TextRenderingSandbox
 
                             Console.WriteLine("Done");
 
-                            //CompressPacker(pp);
+                            CompressPacker(pp);
+
+                            Array.Clear(_glyphCacheRegion._bitmap, 0, _glyphCacheRegion._bitmap.Length);
+
+                            foreach (var glyphResult in _glyphResultList)
+                                _glyphCacheRegion.DrawGlyph(
+                                    font,
+                                    glyphResult.Glyph,
+                                    glyphResult.Scale,
+                                    glyphResult.CharRect);
+
+                            built++;
                         }
                     }
                 }
@@ -396,6 +435,10 @@ namespace TextRenderingSandbox
                         GraphicsDevice, pp.BinWidth, pp.BinHeight, false, SurfaceFormat.Alpha8);
 
                 _glyphCacheTexture.SetData(_glyphCacheRegion._bitmap);
+
+                //var pixels = new byte[_glyphCacheTexture.Width * _glyphCacheTexture.Height];
+                //_glyphCacheTexture.GetData(pixels);
+                //SaveFontBitmap("nice.png", _glyphCacheTexture.Width, _glyphCacheTexture.Height, pixels);
             }
         }
 
@@ -470,7 +513,7 @@ namespace TextRenderingSandbox
                 //_spriteBatch.End();
             }
 
-            var mat = Matrix.CreateScale(1f);
+            var mat = Matrix.CreateScale(0.66f);
 
             _spriteBatch.Begin(blendState: BlendState.NonPremultiplied, effect: _transparentAlpha8Effect, transformMatrix: mat);
 
