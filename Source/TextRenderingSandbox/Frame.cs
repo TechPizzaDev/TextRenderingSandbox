@@ -31,12 +31,14 @@ namespace TextRenderingSandbox
         public int Width => UnitWidth * HorizontalUnitCount;
         public int Height => UnitHeight * VerticalUnitCount;
 
-        public FontGlyphCache()
+        public ReadOnlyMemory<FontGlyphCacheRegion> Regions => _regions.AsMemory();
+
+        public FontGlyphCache(int unitWidth, int unitHeight)
         {
+            UnitWidth = unitWidth;
+            UnitHeight = unitHeight;
             _regions = new FontGlyphCacheRegion[UnitCount];
         }
-
-        
     }
 
     public class Frame : Game
@@ -52,7 +54,7 @@ namespace TextRenderingSandbox
         private SpriteFont _bitmapFont;
 
         private Texture2D _bitmapTex;
-        
+
         private Stopwatch _watch = new Stopwatch();
 
         private FontGlyphCacheRegion _glyphCacheRegion = new FontGlyphCacheRegion(1024, 1024);
@@ -65,8 +67,8 @@ namespace TextRenderingSandbox
         public Frame()
         {
             _graphics = new GraphicsDeviceManager(this);
-            _graphics.PreferredBackBufferWidth = 1366 * 2;
-            _graphics.PreferredBackBufferHeight = 768 * 2;
+            // _graphics.PreferredBackBufferWidth = 1366;
+            // _graphics.PreferredBackBufferHeight = 768;
             Content.RootDirectory = "Content";
 
             IsFixedTimeStep = false;
@@ -102,19 +104,19 @@ namespace TextRenderingSandbox
             var systemFonts = SystemFonts.GetSystemFonts();
             Console.WriteLine("System font count: " + systemFonts.Count);
 
-            //_ranges.Enqueue(CharacterRange.BasicLatin);
-            //_ranges.Enqueue(CharacterRange.Latin1Supplement);
-            //_ranges.Enqueue(CharacterRange.LatinExtendedA);
-            //_ranges.Enqueue(CharacterRange.LatinExtendedB);
-            //_ranges.Enqueue(CharacterRange.Cyrillic);
-            //_ranges.Enqueue(CharacterRange.CyrillicSupplement);
-            //_ranges.Enqueue(CharacterRange.Greek);
+            _ranges.Enqueue(CharacterRange.BasicLatin);
+            _ranges.Enqueue(CharacterRange.Latin1Supplement);
+            _ranges.Enqueue(CharacterRange.LatinExtendedA);
+            _ranges.Enqueue(CharacterRange.LatinExtendedB);
+            _ranges.Enqueue(CharacterRange.Cyrillic);
+            _ranges.Enqueue(CharacterRange.CyrillicSupplement);
+            _ranges.Enqueue(CharacterRange.Greek);
 
             //_ranges.Enqueue(CharacterRange.Hiragana);
             //_ranges.Enqueue(CharacterRange.Katakana);
-            
-            _ranges.Enqueue(CharacterRange.CjkSymbolsAndPunctuation);
-            _ranges.Enqueue(CharacterRange.CjkUnifiedIdeographs);
+
+            //_ranges.Enqueue(CharacterRange.CjkSymbolsAndPunctuation);
+            //_ranges.Enqueue(CharacterRange.CjkUnifiedIdeographs);
 
             _charCodepoint = _ranges.Peek().Start;
         }
@@ -313,7 +315,7 @@ namespace TextRenderingSandbox
             var pp = _glyphCacheRegion._packer;
 
             int built = 0;
-            for (int i = 0; i < 100; i++)
+            for (int i = 0; i < 200; i++)
             {
                 if (pp.FreeRectangles.Count > 100)
                     CompressPacker(pp);
@@ -323,27 +325,27 @@ namespace TextRenderingSandbox
                 {
                     _tick = 0;
 
-                    TICK:
+                TICK:
                     if (_charCodepoint < _ranges.Peek().End)
                     {
-                        int glyph = StbTrueType.FindGlyphIndex(_ZCOOLXiaoWeiFontInfo, _charCodepoint);
+                        var font = _droidSansFontInfo;
+
+                        int glyph = StbTrueType.FindGlyphIndex(font, _charCodepoint);
 
                         bool succ = _glyphCacheRegion.GetGlyphRect(
-                            _ZCOOLXiaoWeiFontInfo, glyph, 0, new TTIntPoint(1), 12, //random.Next(24, 128) / 2f,
-                            out TTPoint scale, out Rect packedRect, out Rect charRect);
+                            font, glyph, padding: 0, 64, //random.Next(24, 128) / 2f,
+                            out TTPoint scale, out PackedRect packedRect, out Rect charRect);
 
-                        //if (packedRect.Width != 0 && packedRect.Height != 0 &&
-                        //    (packedRect.Width < charRect.Width ||
-                        //    packedRect.Height < charRect.Height))
-                        //    throw new Exception();
+                        if (succ)
+                        {
+                            if (packedRect.IsRotated)
+                                throw new Exception();
 
-                        //if (succ && packedRect.Width != 0 && packedRect.Height != 0)
-                        //{
-                        //    _glyphCacheRegion.DrawGlyph(_ZCOOLXiaoWeiFontInfo, glyph, scale, charRect);
-                        //    built++;
+                            //_glyphCacheRegion.DrawGlyph(font, glyph, scale, charRect);
+                            //built++;
 
-                        // TODO: fix this, it needs to be redrawn after compress
-                        //}
+                            // TODO: fix this, it needs to be redrawn after compress
+                        }
 
                         _processed++;
                         _charCodepoint++;
@@ -381,7 +383,7 @@ namespace TextRenderingSandbox
 
                             Console.WriteLine("Done");
 
-                            CompressPacker(pp);
+                            //CompressPacker(pp);
                         }
                     }
                 }
@@ -397,33 +399,48 @@ namespace TextRenderingSandbox
             }
         }
 
-        private ListArray<Rect> tmpList = new ListArray<Rect>();
+        private ListArray<PackedRect> tmpList = new ListArray<PackedRect>();
 
         private void CompressPacker(MaxRectsBinPack packer)
         {
+            _watch.Restart();
+
+            tmpList.Clear();
             tmpList.AddRange(packer.UsedRectangles);
+
             tmpList.Sort((x, y) =>
             {
-                int xA = x.Area;
-                int yA = y.Area;
-                if (xA < yA)
+                // Sort by largest height then width.
+                if (x.Rect.Height > y.Rect.Height)
                     return -1;
-                if (xA > yA)
+                if (x.Rect.Height < y.Rect.Height)
                     return 1;
+
+                if (x.Rect.Width > y.Rect.Width)
+                    return -1;
+                if (x.Rect.Width < y.Rect.Width)
+                    return 1;
+
+                int areaComp = y.Rect.Area.CompareTo(x.Rect.Area);
+                if (areaComp != 0)
+                    return areaComp;
+
                 return 0;
             });
-            packer.Init(packer.BinWidth, packer.BinHeight, rotations: true);
-         
+            packer.Init(packer.BinWidth, packer.BinHeight, rotations: false);
+
             for (int i = 0; i < tmpList.Count; i++)
             {
-                Rect rrr = tmpList[i];
-                Rect repacked = packer.Insert(
-                    rrr.Width, rrr.Height, MaxRectsBinPack.FreeRectChoiceHeuristic.RectBottomLeftRule);
+                var rrr = tmpList[i];
+                var repacked = packer.Insert(
+                    rrr.Rect.Width, rrr.Rect.Height, MaxRectsBinPack.FreeRectChoiceHeuristic.BottomLeftRule);
 
-                if (repacked.Width == 0 || repacked.Height == 0)
+                if (repacked.Rect.Width == 0 || repacked.Rect.Height == 0)
                     throw new Exception("Compressing packer failed.");
             }
-            tmpList.Clear();
+
+            _watch.Stop();
+            Console.WriteLine(_watch.Elapsed.TotalMilliseconds.ToString("f2") + "ms");
         }
 
         //private Texture2D _tmpTexture;
@@ -453,7 +470,7 @@ namespace TextRenderingSandbox
                 //_spriteBatch.End();
             }
 
-            var mat = Matrix.CreateScale(0.66f);
+            var mat = Matrix.CreateScale(1f);
 
             _spriteBatch.Begin(blendState: BlendState.NonPremultiplied, effect: _transparentAlpha8Effect, transformMatrix: mat);
 
@@ -466,15 +483,18 @@ namespace TextRenderingSandbox
             for (; u < pack.UsedRectangles.Count; u++)
             {
                 var used = pack.UsedRectangles[u];
-                _spriteBatch.FillRectangle(new RectangleF(used.X, used.Y, used.Width, used.Height), Color.Yellow, 0);
+                //_spriteBatch.FillRectangle(new RectangleF(used.X, used.Y, used.Width, used.Height), Color.Yellow, 0);
+                _spriteBatch.DrawRectangle(
+                    new RectangleF(used.Rect.X, used.Rect.Y, used.Rect.Width, used.Rect.Height), Color.Yellow, 1);
             }
 
-            Console.WriteLine("P: " + _processed + " | Used: " + pack.UsedRectangles.Count + 
-                " | Free: " + pack.FreeRectangles.Count + " | " +  Math.Round(pack.Occupancy() * 100) + "%");
+            //Console.WriteLine("P: " + _processed + " | Used: " + pack.UsedRectangles.Count + 
+            //    " | Free: " + pack.FreeRectangles.Count + " | " +  Math.Round(pack.Occupancy() * 100) + "%");
 
             //_spriteBatch.DrawRectangle(new RectangleF(0, 0, pack.BinWidth, pack.BinHeight), Color.Red, 1, 0);
 
-            //_spriteBatch.Draw(_glyphCacheTexture, new Vector2(0, 0), Color.White);
+            if (_glyphCacheTexture != null)
+                _spriteBatch.Draw(_glyphCacheTexture, new Vector2(0, 0), Color.White);
 
             if (false)
             {
