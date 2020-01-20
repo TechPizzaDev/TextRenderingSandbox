@@ -331,16 +331,14 @@ namespace TextRenderingSandbox
             int fails = 0;
             int built = 0;
 
-            for (int i = 0; i < 100; i++)
+            for (int i = 0; i < 500; i++)
             {
                 if (_ranges.Count > 0)
                 {
                     TICK:
-                    if (fails > 0 || pp.FreeRectangles.Count > 200)
+                    if (fails > 0 || pp.FreeRectangles.Count > 128)
                     {
-                        Console.WriteLine(fails);
-
-                        Array.Clear(_glyphCacheRegion._bitmap, 0, _glyphCacheRegion._bitmap.Length);
+                        _glyphCacheRegion.RegionBitmap.Span.Fill(0);
                         CompressPacker(pp);
                         fails = 0;
                     }
@@ -356,7 +354,7 @@ namespace TextRenderingSandbox
                         }
 
                         bool succ = _glyphCacheRegion.GetGlyphRect(
-                            font, glyph, padding: 0, random.Next(10, 20),
+                            font, glyph, padding: 0, random.Next(10, 16),
                             out TTPoint scale, out PackedRect packedRect, out Rect charRect);
 
                         if (succ)
@@ -388,6 +386,11 @@ namespace TextRenderingSandbox
                         }
                         else
                         {
+                            _ranges.Enqueue(CharacterRange.CjkSymbolsAndPunctuation);
+                            _ranges.Enqueue(CharacterRange.CjkUnifiedIdeographs);
+
+                            _charCodepoint = _ranges.Peek().Start;
+
                             //_graphics.IsFullScreen = true;
                             //_graphics.ApplyChanges();
                             //
@@ -411,9 +414,10 @@ namespace TextRenderingSandbox
 
                             Console.WriteLine("Done");
 
-                            CompressPacker(pp);
+                            //CompressPacker(pp);
+                            pp.Init(pp.BinWidth, pp.BinHeight, false);
 
-                            Array.Clear(_glyphCacheRegion._bitmap, 0, _glyphCacheRegion._bitmap.Length);
+                            _glyphCacheRegion.RegionBitmap.Span.Fill(0);
 
                             foreach (var glyphResult in _glyphResultList)
                                 _glyphCacheRegion.DrawGlyph(
@@ -434,7 +438,7 @@ namespace TextRenderingSandbox
                     _glyphCacheTexture = new Texture2D(
                         GraphicsDevice, pp.BinWidth, pp.BinHeight, false, SurfaceFormat.Alpha8);
 
-                _glyphCacheTexture.SetData(_glyphCacheRegion._bitmap);
+                _glyphCacheTexture.SetData(_glyphCacheRegion.RegionBitmap.ToArray());
 
                 //var pixels = new byte[_glyphCacheTexture.Width * _glyphCacheTexture.Height];
                 //_glyphCacheTexture.GetData(pixels);

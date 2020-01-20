@@ -9,56 +9,53 @@ namespace TextRenderingSandbox
 {
     class FontGlyphCacheRegion
     {
+        public class RegionData
+        {
+            public int Width { get; }
+            public int Height { get; }
+            public byte[] Bitmap { get; } // TODO: change to MonoGame.Imaging.Image<Alpha8>
+
+            public int Stride => Width;
+
+            public RegionData(int width, int height)
+            {
+                Width = width;
+                Height = height;
+                Bitmap = new byte[Width * Height];
+            }
+        }
+
         public MaxRectsBinPack _packer;// TODO: optimize packer (e.g sorting every 100 rects)
 
-        private readonly int _width;
-        private readonly int _height;
-        public byte[] _bitmap; // TODO: change to MonoGame.Imaging.Image<Alpha8>
-
-        private readonly int _bufferWidth;
-        private readonly int _bufferHeight;
-        private byte[] _bufferBitmap;
+        private RegionData _regionData;
 
         public MaxRectsBinPack.FreeRectChoiceHeuristic PackMethod { get; set; } =
             MaxRectsBinPack.FreeRectChoiceHeuristic.BottomLeftRule;
 
+        public Memory<byte> RegionBitmap => _regionData.Bitmap;
+
         public FontGlyphCacheRegion(int width, int height)
         {
-            _width = width;
-            _height = height;
-            _bufferWidth = 256;
-            _bufferHeight = 256;
-
-            _packer = new MaxRectsBinPack(_width, _height, rotations: false);
-            _bitmap = new byte[_width * _height];
-            _bufferBitmap = new byte[_bufferWidth * _bufferHeight];
+            _regionData = new RegionData(width, height);
+            _packer = new MaxRectsBinPack(_regionData.Width, _regionData.Height, rotations: false);
         }
 
         public void DrawGlyph(TTFontInfo fontInfo, int glyph, TTPoint scale, Rect charRect)
         {
             int width = charRect.Width;
             int height = charRect.Height;
+            var pixelOffset = new TTIntPoint(charRect.X, charRect.Y);
 
             MakeGlyphBitmapSubpixel(
                 fontInfo,
-                _bufferBitmap,
+                _regionData.Bitmap,
                 width,
                 height,
-                out_stride: _bufferWidth,
+                out_stride: _regionData.Stride,
                 scale,
                 shift: TTPoint.Zero,
-                pixelOffset: TTIntPoint.Zero,
+                pixelOffset,
                 glyph);
-
-            for (int y = 0; y < height; y++)
-            {
-                for (int x = 0; x < width; x++)
-                {
-                    int src = x + y * _bufferWidth;
-                    int dst = x + charRect.X + (y + charRect.Y) * _width;
-                    _bitmap[dst] = _bufferBitmap[src];
-                }
-            }
         }
 
         #region GetGlyphRect
