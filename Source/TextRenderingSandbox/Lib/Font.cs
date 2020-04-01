@@ -5,7 +5,7 @@ using Microsoft.Xna.Framework;
 namespace TextRenderingSandbox
 {
     /// <summary>
-    /// Provides metadata about a font.
+    /// Provides simple information about a font.
     /// </summary>
     public readonly struct FontDescription
     {
@@ -61,9 +61,9 @@ namespace TextRenderingSandbox
             return null;
         }
 
-        public static Font LoadFrom(string fileName)
+        public static Font Load(string filePath)
         {
-            using (var fs = File.OpenRead(fileName))
+            using (var fs = File.OpenRead(filePath))
                 return Load(fs);
         }
     }

@@ -17,24 +17,24 @@ namespace TextRenderingSandbox
         public IFont this[FontStyle style] => _fonts[style];
 
         /// <summary>
-        /// Gets the name of the <see cref="FontFamily"/>.
+        /// Gets the name of the font family.
         /// </summary>
         public string Name { get; }
 
         /// <summary>
-        /// Gets the font styles that this family contains.
+        /// Gets the font styles in this family.
         /// </summary>
         public Dictionary<FontStyle, IFont>.KeyCollection Styles => _fonts.Keys;
 
         /// <summary>
-        /// Gets the fonts that this family contains.
+        /// Gets the fonts in this family.
         /// </summary>
         public Dictionary<FontStyle, IFont>.ValueCollection Fonts => _fonts.Values;
 
+        public FontStyle DefaultStyle => ContainsKey(FontStyle.Regular) ? FontStyle.Regular : Styles.First();
+
         IEnumerable<FontStyle> IReadOnlyDictionary<FontStyle, IFont>.Keys => _fonts.Keys;
         IEnumerable<IFont> IReadOnlyDictionary<FontStyle, IFont>.Values => _fonts.Values;
-
-        public FontStyle DefaultStyle => ContainsKey(FontStyle.Regular) ? FontStyle.Regular : Styles.First();
 
         /// <summary>
         /// Gets the number of fonts in this family.
