@@ -3,13 +3,15 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Threading;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using MonoGame.Extended;
 using StbSharp;
-using static StbSharp.StbTrueType;
+using StbSharp.MonoGame.Test;
 
 // TODO: sub/super-script text for most fonts
 // https://forum.processing.org/two/discussion/6367/primitive-superscript-subscript-text-rendering
@@ -89,14 +91,14 @@ namespace TextRenderingSandbox
             _fontBaker = new FontBaker();
 
             _watch.Restart();
-            LoadBitmapFont();
-            _watch.Stop();
-            Console.WriteLine("bitmap font load: " + Math.Round(_watch.Elapsed.TotalMilliseconds) + "ms");
-
-            _watch.Restart();
             FontLoadTest1();
             _watch.Stop();
             Console.WriteLine(nameof(FontLoadTest1) + ": " + Math.Round(_watch.Elapsed.TotalMilliseconds) + "ms");
+
+            _watch.Restart();
+            LoadBitmapFont();
+            _watch.Stop();
+            Console.WriteLine("bitmap font load: " + Math.Round(_watch.Elapsed.TotalMilliseconds) + "ms");
 
             _transparentAlpha8Effect = Content.Load<Effect>("TransparentAlpha8Effect");
 
@@ -122,23 +124,23 @@ namespace TextRenderingSandbox
 
         private FontBaker _fontBaker;
         private byte[] _droidSansBytes;
-        private TTFontInfo _droidSansFontInfo;
-        private TTFontInfo _droidSansJapFontInfo;
-        private TTFontInfo _ZCOOLXiaoWeiFontInfo;
+        private TrueType.FontInfo _droidSansFontInfo;
+        private TrueType.FontInfo _droidSansJapFontInfo;
+        private TrueType.FontInfo _ZCOOLXiaoWeiFontInfo;
 
         private void LoadBitmapFont()
         {
-            _droidSansFontInfo = new TTFontInfo();
-            StbTrueType.InitFont(_droidSansFontInfo, _droidSansBytes, 0);
+            _droidSansFontInfo = new TrueType.FontInfo();
+            TrueType.InitFont(_droidSansFontInfo, _droidSansBytes, 0);
 
-            _droidSansJapFontInfo = new TTFontInfo();
-            StbTrueType.InitFont(_droidSansJapFontInfo, File.ReadAllBytes("Fonts/DroidSansJapanese.ttf"), 0);
+            _droidSansJapFontInfo = new TrueType.FontInfo();
+            TrueType.InitFont(_droidSansJapFontInfo, File.ReadAllBytes("Fonts/DroidSansJapanese.ttf"), 0);
 
-            _ZCOOLXiaoWeiFontInfo = new TTFontInfo();
-            StbTrueType.InitFont(_ZCOOLXiaoWeiFontInfo, File.ReadAllBytes("Fonts/ZCOOLXiaoWei-Regular.ttf"), 0);
+            _ZCOOLXiaoWeiFontInfo = new TrueType.FontInfo();
+            TrueType.InitFont(_ZCOOLXiaoWeiFontInfo, File.ReadAllBytes("Fonts/ZCOOLXiaoWei-Regular.ttf"), 0);
 
-            _fontBaker.Begin(FontBitmapWidth, FontBitmapHeight);
-            _fontBaker.Add(_droidSansBytes, 32, new[]
+            _fontBaker.Start(FontBitmapWidth, FontBitmapHeight);
+            _fontBaker.Add(_droidSansBytes, fontIndex: 0, pixelHeight: 32, new[]
             {
                 CharacterRange.BasicLatin,
                 CharacterRange.Latin1Supplement,
@@ -165,7 +167,7 @@ namespace TextRenderingSandbox
             //    CharacterRange.HangulSyllables
             //});
 
-            var result = _fontBaker.End();
+            var result = _fontBaker.GetResult();
 
             Console.WriteLine("glyph count: " + result.Glyphs.Count);
 
@@ -181,16 +183,13 @@ namespace TextRenderingSandbox
 
         private unsafe void FontLoadTest1()
         {
-            var fontInfo = new StbTrueType.TTFontInfo();
-            if (!StbTrueType.InitFont(fontInfo, File.ReadAllBytes("Fonts/ZCOOLXiaoWei-Regular.ttf"), 0))
+            var fontInfo = new TrueType.FontInfo();
+            if (!TrueType.InitFont(fontInfo, File.ReadAllBytes("Fonts/DroidSans.ttf"), 0))
                 throw new Exception("Failed to init font.");
 
-            float fontPixelHeight = 32;
-            var scale = StbTrueType.ScaleForPixelHeight(fontInfo, fontPixelHeight);
+            int codepoint = '0';
 
-            int codepoint = '贼';
-
-            //byte* bitmapPixels = StbTrueType.GetCodepointBitmap(
+            //byte* bitmapPixels = TrueType.GetCodepointBitmap(
             //    fontInfo, scale, codepoint, out int bmpWidth, out int bmpHeight, out var bmpOffset);
             //
             //{
@@ -198,20 +197,29 @@ namespace TextRenderingSandbox
             //    _bitmapTex.SetData(new Span<byte>(bitmapPixels, bmpWidth * bmpHeight).ToArray());
             //}
 
+            float fontPixelHeight = 32;
+            var scale = TrueType.ScaleForPixelHeight(fontInfo, fontPixelHeight);
+
+            Thread.Sleep(1000);
             var w = new Stopwatch();
             w.Restart();
-            int execs = 1000 * 1;
+            int execs = 1;
             for (int zz = 0; zz < execs; zz++)
             {
-                byte* pixelse = StbTrueType.GetCodepointBitmap(
-                    fontInfo, scale, codepoint, out int widthe, out int heighte, out var offsete);
+                {
+                    byte[] pixelse = TrueType.GetCodepointBitmapSubpixel(
+                        fontInfo, scale, new TrueType.Point(0f, 0f), codepoint,
+                        out int widthe, out int heighte, out var offsete);
 
-                StbTrueType.FreeBitmap(pixelse);
+                    //SaveFontBitmap("wtf.png", widthe, heighte, new Span<byte>(pixelse, widthe * heighte).ToArray());
+                }
             }
             w.Stop();
-            Console.WriteLine("Bitmap: Render time per char: " + Math.Round(w.Elapsed.TotalMilliseconds / execs, 2) + "ms");
+            Thread.Sleep(1000);
+            Console.WriteLine(
+                "Bitmap: Render time per char: " + Math.Round(w.Elapsed.TotalMilliseconds / execs, 2) + "ms");
 
-            //StbTrueType.FreeBitmap(bitmapPixels);
+            //TrueType.FreeBitmap(bitmapPixels);
         }
 
         private SpriteFont CreateFont(Texture2D texture, FontBakerResult result)
@@ -286,10 +294,17 @@ namespace TextRenderingSandbox
                     System.Drawing.Imaging.ImageLockMode.WriteOnly,
                     System.Drawing.Imaging.PixelFormat.Format8bppIndexed);
 
-                Marshal.Copy(pixels, 0, pixelData.Scan0, pixels.Length);
+                for (int y = 0; y < height; y++)
+                    Marshal.Copy(
+                        source: pixels,
+                        startIndex: y * width,
+                        destination: pixelData.Scan0 + y * pixelData.Stride,
+                        length: width);
 
                 bitmap.UnlockBits(pixelData);
-                bitmap.Save(fileName);
+
+                using (var fs = new FileStream(fileName, FileMode.Create))
+                    bitmap.Save(fs, System.Drawing.Imaging.ImageFormat.Png);
             }
         }
 
@@ -308,10 +323,10 @@ namespace TextRenderingSandbox
         private struct GlyphResult
         {
             public int Glyph;
-            public TTPoint Scale;
+            public TrueType.Point Scale;
             public Rect CharRect;
 
-            public GlyphResult(int glyph, TTPoint scale, Rect charRect)
+            public GlyphResult(int glyph, TrueType.Point scale, Rect charRect)
             {
                 Glyph = glyph;
                 Scale = scale;
@@ -324,6 +339,8 @@ namespace TextRenderingSandbox
             var keyboard = Keyboard.GetState();
             if (keyboard.IsKeyDown(Keys.Escape))
                 Exit();
+
+            return;
 
             var font = _ZCOOLXiaoWeiFontInfo;
             var pp = _glyphCacheRegion._packer;
@@ -345,7 +362,7 @@ namespace TextRenderingSandbox
 
                     if (_charCodepoint < _ranges.Peek().End)
                     {
-                        int glyph = StbTrueType.FindGlyphIndex(font, _charCodepoint);
+                        int glyph = TrueType.FindGlyphIndex(font, _charCodepoint);
                         if (glyph == 0)
                         {
                             _charCodepoint++;
@@ -355,7 +372,7 @@ namespace TextRenderingSandbox
 
                         bool succ = _glyphCacheRegion.GetGlyphRect(
                             font, glyph, padding: 0, random.Next(10, 16),
-                            out TTPoint scale, out PackedRect packedRect, out Rect charRect);
+                            out TrueType.Point scale, out PackedRect packedRect, out Rect charRect);
 
                         if (succ)
                         {
@@ -438,7 +455,7 @@ namespace TextRenderingSandbox
                     _glyphCacheTexture = new Texture2D(
                         GraphicsDevice, pp.BinWidth, pp.BinHeight, false, SurfaceFormat.Alpha8);
 
-                _glyphCacheTexture.SetData(_glyphCacheRegion.RegionBitmap.ToArray());
+                _glyphCacheTexture.SetData(_glyphCacheRegion._regionData.Bitmap);
 
                 //var pixels = new byte[_glyphCacheTexture.Width * _glyphCacheTexture.Height];
                 //_glyphCacheTexture.GetData(pixels);
@@ -499,17 +516,19 @@ namespace TextRenderingSandbox
 
             if (true)
             {
-                float scale = 1f; // (float)(Math.Sin(gameTime.TotalGameTime.TotalSeconds * 0.2f) + 1) / 2f * 5 + 0.1f;
+                float scale = 1.666f; // (float)(Math.Sin(gameTime.TotalGameTime.TotalSeconds * 0.2f) + 1) / 2f * 5 + 0.1f;
 
-                /*
                 _spriteBatch.Begin(blendState: BlendState.NonPremultiplied, effect: _transparentAlpha8Effect);
 
                 var font = _bitmapFont;
-                _spriteBatch.DrawString(font, "Now this is some epic quality :^D\n dont u dare disagree 123456789 {[]}",
-                    new Vector2(0, 0), Color.White, 0, Vector2.Zero, scale, SpriteEffects.None, 0);
+
+                _spriteBatch.Draw(
+                    font.Texture, new Vector2(0, 0), null, Color.White, 0, Vector2.Zero, scale, SpriteEffects.None, 0);
+
+                //_spriteBatch.DrawString(font, "Now this is some epic quality :^D\n dont u dare disagree 123456789 {[]}",
+                //    new Vector2(0, 0), Color.White, 0, Vector2.Zero, scale, SpriteEffects.None, 0);
 
                 _spriteBatch.End();
-                */
 
                 //_spriteBatch.Begin(blendState: BlendState.NonPremultiplied, effect: _transparentAlpha8Effect);
                 //_spriteBatch.Draw(

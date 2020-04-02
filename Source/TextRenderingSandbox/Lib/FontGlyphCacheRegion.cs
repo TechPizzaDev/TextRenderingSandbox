@@ -1,9 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static StbSharp.StbTrueType;
+using StbSharp;
 
 namespace TextRenderingSandbox
 {
@@ -27,7 +23,7 @@ namespace TextRenderingSandbox
 
         public MaxRectsBinPack _packer;// TODO: optimize packer (e.g sorting every 100 rects)
 
-        private RegionData _regionData;
+        public RegionData _regionData; // TODO: make private
 
         public MaxRectsBinPack.FreeRectChoiceHeuristic PackMethod { get; set; } =
             MaxRectsBinPack.FreeRectChoiceHeuristic.BottomLeftRule;
@@ -40,20 +36,20 @@ namespace TextRenderingSandbox
             _packer = new MaxRectsBinPack(_regionData.Width, _regionData.Height, rotations: false);
         }
 
-        public void DrawGlyph(TTFontInfo fontInfo, int glyph, TTPoint scale, Rect charRect)
+        public void DrawGlyph(TrueType.FontInfo fontInfo, int glyph, TrueType.Point scale, Rect charRect)
         {
             int width = charRect.Width;
             int height = charRect.Height;
-            var pixelOffset = new TTIntPoint(charRect.X, charRect.Y);
+            var pixelOffset = new TrueType.IntPoint(charRect.X, charRect.Y);
 
-            MakeGlyphBitmapSubpixel(
+            TrueType.MakeGlyphBitmapSubpixel(
                 fontInfo,
                 _regionData.Bitmap,
                 width,
                 height,
                 out_stride: _regionData.Stride,
                 scale,
-                shift: TTPoint.Zero,
+                shift: TrueType.Point.Zero,
                 pixelOffset,
                 glyph);
         }
@@ -61,17 +57,23 @@ namespace TextRenderingSandbox
         #region GetGlyphRect
 
         public bool GetGlyphRect(
-            TTFontInfo fontInfo, int glyph, int padding, TTIntPoint oversample, float fontSize,
-            out TTPoint scale, out PackedRect packedRect, out Rect charRect)
+            TrueType.FontInfo fontInfo, 
+            int glyph,
+            int padding,
+            TrueType.IntPoint oversample,
+            float fontSize,
+            out TrueType.Point scale, 
+            out PackedRect packedRect, 
+            out Rect charRect)
         {
             scale = fontSize > 0
-                ? ScaleForPixelHeight(fontInfo, fontSize)
-                : ScaleForMappingEmToPixels(fontInfo, -fontSize);
+                ? TrueType.ScaleForPixelHeight(fontInfo, fontSize)
+                : TrueType.ScaleForMappingEmToPixels(fontInfo, -fontSize);
 
             if (glyph != 0)
             {
-                GetGlyphBitmapBoxSubpixel(
-                    fontInfo, glyph, scale * oversample, TTPoint.Zero, out var glyphBox);
+                TrueType.GetGlyphBitmapBoxSubpixel(
+                    fontInfo, glyph, scale * oversample, TrueType.Point.Zero, out var glyphBox);
 
                 if (glyphBox.w != 0 && glyphBox.h != 0)
                 {
@@ -95,11 +97,11 @@ namespace TextRenderingSandbox
         }
 
         public bool GetGlyphRect(
-            TTFontInfo fontInfo, int glyph, int padding, float fontSize,
-            out TTPoint scale, out PackedRect packedRect, out Rect charRect)
+            TrueType.FontInfo fontInfo, int glyph, int padding, float fontSize,
+            out TrueType.Point scale, out PackedRect packedRect, out Rect charRect)
         {
             return GetGlyphRect(
-                fontInfo, glyph, padding, new TTIntPoint(1), fontSize,
+                fontInfo, glyph, padding, new TrueType.IntPoint(1), fontSize,
                 out scale, out packedRect, out charRect);
         }
 

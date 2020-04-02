@@ -3,11 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29409.12
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TextRenderingSandbox", "TextRenderingSandbox\TextRenderingSandbox.csproj", "{3993BF5D-2EE2-4DDC-9C49-0340833B935C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TextRenderingSandbox", "TextRenderingSandbox\TextRenderingSandbox.csproj", "{3993BF5D-2EE2-4DDC-9C49-0340833B935C}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "StbTrueTypeSharp", "..\ThirdParty\StbTrueTypeSharp\src\StbTrueTypeSharp\StbTrueTypeSharp.csproj", "{2C394B99-C231-460F-8D80-3FE902F5679C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "StbSharp.Shared", "..\ThirdParty\StbTrueTypeSharp\modules\StbSharp.Shared\src\StbSharp.Shared.csproj", "{B8317058-AFA1-49AD-862C-C1F0847660D8}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "StbSharp.Shared", "..\ThirdParty\StbTrueTypeSharp\modules\StbSharp.Shared\src\StbSharp.Shared\StbSharp.Shared.csproj", "{146D201F-84EB-4C7D-A908-B5059D669DA6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "StbSharp.TrueType", "..\ThirdParty\StbTrueTypeSharp\src\StbSharp.TrueType.csproj", "{DD5EADD8-4CD2-4353-9236-E483D3B50AA1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -19,14 +19,14 @@ Global
 		{3993BF5D-2EE2-4DDC-9C49-0340833B935C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3993BF5D-2EE2-4DDC-9C49-0340833B935C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3993BF5D-2EE2-4DDC-9C49-0340833B935C}.Release|Any CPU.Build.0 = Release|Any CPU
-		{2C394B99-C231-460F-8D80-3FE902F5679C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{2C394B99-C231-460F-8D80-3FE902F5679C}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{2C394B99-C231-460F-8D80-3FE902F5679C}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{2C394B99-C231-460F-8D80-3FE902F5679C}.Release|Any CPU.Build.0 = Release|Any CPU
-		{146D201F-84EB-4C7D-A908-B5059D669DA6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{146D201F-84EB-4C7D-A908-B5059D669DA6}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{146D201F-84EB-4C7D-A908-B5059D669DA6}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{146D201F-84EB-4C7D-A908-B5059D669DA6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B8317058-AFA1-49AD-862C-C1F0847660D8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B8317058-AFA1-49AD-862C-C1F0847660D8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B8317058-AFA1-49AD-862C-C1F0847660D8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B8317058-AFA1-49AD-862C-C1F0847660D8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DD5EADD8-4CD2-4353-9236-E483D3B50AA1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DD5EADD8-4CD2-4353-9236-E483D3B50AA1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DD5EADD8-4CD2-4353-9236-E483D3B50AA1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DD5EADD8-4CD2-4353-9236-E483D3B50AA1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

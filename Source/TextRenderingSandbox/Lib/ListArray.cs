@@ -13,19 +13,19 @@ namespace TextRenderingSandbox
     {
         public delegate void VersionChangedDelegate(int oldVersion, int newVersion);
         public event VersionChangedDelegate Changed;
-        
-        private const int _defaultCapacity = 4;
+
+        private const int DefaultCapacity = 4;
 
         private ReadOnlyCollection<T> _readonly;
         private T[] _innerArray;
+        private int _version;
         private int _count;
-        private int __version;
 
         public bool IsReadOnly { get; private set; }
         public bool IsFixedCapacity { get; private set; }
-        public int Version => __version;
 
         public T[] InnerArray => _innerArray;
+        public int Version => _version;
         public int Count => _count;
 
         public T this[int index]
@@ -33,13 +33,12 @@ namespace TextRenderingSandbox
             get
             {
                 if (index >= _count)
-                    throw new ArgumentOutOfRangeException(nameof(index));
-
+                    throw new IndexOutOfRangeException();
                 return _innerArray[index];
             }
             set
             {
-                CheckAccessibility();
+                AssertAccessible();
                 _innerArray[index] = value;
                 UpdateVersion();
             }
@@ -52,9 +51,9 @@ namespace TextRenderingSandbox
             {
                 if (IsFixedCapacity)
                     throw new InvalidOperationException(
-                        "This collection has a fixed capacity therefore cannot be resized.");
+                        "This collection has a fixed capacity and cannot be resized.");
 
-                CheckAccessibility();
+                AssertAccessible();
 
                 if (value != _innerArray.Length)
                 {
@@ -64,7 +63,7 @@ namespace TextRenderingSandbox
 
                     if (value > 0)
                     {
-                        T[] newItems = new T[value];
+                        var newItems = new T[value];
                         if (_count > 0)
                             Array.Copy(_innerArray, 0, newItems, 0, _count);
                         _innerArray = newItems;
@@ -92,31 +91,31 @@ namespace TextRenderingSandbox
             IsFixedCapacity = fixedCapacity;
         }
 
-        public ListArray(T[] sourceArray, int startOffset, int count)
+        public ListArray(T[] items, int startOffset, int count)
         {
-            _innerArray = sourceArray;
+            _innerArray = items;
             _count = count;
-            Capacity = sourceArray.Length;
+            Capacity = items.Length;
             IsFixedCapacity = true;
 
             if (startOffset != 0)
             {
-                Array.ConstrainedCopy(sourceArray, startOffset, sourceArray, 0, count);
-                Array.Clear(sourceArray, count, Capacity - count);
+                Array.ConstrainedCopy(items, startOffset, items, 0, count);
+                Array.Clear(items, count, Capacity - count);
             }
         }
 
-        public ListArray(T[] sourceArray, int count) : this(sourceArray, 0, count)
+        public ListArray(T[] items, int count) : this(items, 0, count)
         {
         }
 
-        public ListArray(T[] sourceArray) : this(sourceArray, 0, sourceArray.Length)
+        public ListArray(T[] items) : this(items, 0, items.Length)
         {
         }
 
-        public ListArray(IEnumerable<T> collection, bool readOnly)
+        public ListArray(IEnumerable<T> items, bool makeReadOnly)
         {
-            if (collection is ICollection<T> c)
+            if (items is ICollection<T> c)
             {
                 int count = c.Count;
                 if (count != 0)
@@ -132,27 +131,27 @@ namespace TextRenderingSandbox
             {
                 _count = 0;
                 _innerArray = Array.Empty<T>();
-                AddRange(collection);
+                AddRange(items);
             }
 
-            IsReadOnly = readOnly;
+            IsReadOnly = makeReadOnly;
         }
-        
-        public ListArray(IEnumerable<T> collection) : this(collection, false)
+
+        public ListArray(IEnumerable<T> items) : this(items, makeReadOnly: false)
         {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void UpdateVersion()
         {
-            int newVersion = unchecked(__version + 1);
-            Changed?.Invoke(__version, newVersion);
-            __version = newVersion;
+            int oldVersion = _version;
+            unchecked(_version)++;
+            Changed?.Invoke(oldVersion, _version);
         }
-        
+
         [DebuggerHidden]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void CheckAccessibility()
+        private void AssertAccessible()
         {
             if (IsReadOnly)
                 throw new InvalidOperationException("This collection is marked as read-only.");
@@ -161,25 +160,19 @@ namespace TextRenderingSandbox
         public ref T GetReferenceAt(int index)
         {
             if (index >= _count)
-                throw new IndexOutOfRangeException();
-
+                throw new ArgumentOutOfRangeException(nameof(index));
             return ref _innerArray[index];
         }
-        
+
         public void Add(T item)
         {
-            AddCheck();
-            _innerArray[_count++] = item;
-            UpdateVersion();
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void AddCheck()
-        {
-            CheckAccessibility();
+            AssertAccessible();
 
             if (_count == _innerArray.Length)
                 EnsureCapacity(_count + 1);
+
+            _innerArray[_count++] = item;
+            UpdateVersion();
         }
 
         public void AddRange(IEnumerable<T> collection)
@@ -194,7 +187,7 @@ namespace TextRenderingSandbox
 
         public void Sort(int index, int count, IComparer<T> comparer)
         {
-            CheckAccessibility();
+            AssertAccessible();
 
             if (index < 0)
                 throw new ArgumentOutOfRangeException(nameof(index));
@@ -212,21 +205,28 @@ namespace TextRenderingSandbox
 
         public void Sort(Comparison<T> comparison)
         {
-            Sort(new FunctorComparer(comparison));
+            if (_count > 0)
+                Sort(new FunctorComparer(comparison));
         }
 
         internal sealed class FunctorComparer : IComparer<T>
         {
             private Comparison<T> _comparison;
 
-            public FunctorComparer(Comparison<T> comparison) => _comparison = comparison;
+            public FunctorComparer(Comparison<T> comparison)
+            {
+                _comparison = comparison;
+            }
 
-            public int Compare(T x, T y) => _comparison(x, y);
+            public int Compare(T x, T y)
+            {
+                return _comparison(x, y);
+            }
         }
 
         public void Clear()
         {
-            CheckAccessibility();
+            AssertAccessible();
 
             if (_count > 0)
             {
@@ -235,6 +235,15 @@ namespace TextRenderingSandbox
                 _count = 0;
                 UpdateVersion();
             }
+        }
+
+        public void TrimExcess()
+        {
+            AssertAccessible();
+
+            int threshold = (int)(_innerArray.Length * 0.9);
+            if (_count < threshold)
+                Capacity = _count;
         }
 
         public bool Contains(T item)
@@ -252,23 +261,40 @@ namespace TextRenderingSandbox
             int index = IndexOf(item);
             if (index != -1)
             {
-                RemoveAtInternal(index);
+                RemoveAt(index);
                 return true;
             }
             return false;
         }
-        
+
         public void RemoveAt(int index)
         {
-            GetAndRemoveAt(index);
+            if ((uint)index >= (uint)_count)
+                throw new ArgumentOutOfRangeException(nameof(index));
+            AssertAccessible();
+
+            _count--;
+            if (index < _count)
+                Array.Copy(_innerArray, index + 1, _innerArray, index, _count - index);
+
+            _innerArray[_count] = default;
+            UpdateVersion();
         }
 
         public T GetAndRemoveAt(int index)
         {
-            if (index >= _count || index < 0)
-                throw new IndexOutOfRangeException();
+            if ((uint)index >= (uint)_count)
+                throw new ArgumentOutOfRangeException(nameof(index));
+            AssertAccessible();
 
-            return RemoveAtInternal(index);
+            _count--;
+            if (index < _count)
+                Array.Copy(_innerArray, index + 1, _innerArray, index, _count - index);
+
+            var item = _innerArray[_count];
+            _innerArray[_count] = default;
+            UpdateVersion();
+            return item;
         }
 
         public T GetAndRemoveLast()
@@ -290,7 +316,7 @@ namespace TextRenderingSandbox
                 throw new ArgumentException(
                     $"{nameof(index)} and {nameof(count)} do not denote a valid range of elements.");
 
-            CheckAccessibility();
+            AssertAccessible();
 
             if (count > 0)
             {
@@ -302,28 +328,12 @@ namespace TextRenderingSandbox
                 UpdateVersion();
             }
         }
-        
-        private T RemoveAtInternal(int index)
-        {
-            CheckAccessibility();
-
-            _count--;
-            if (index < _count)
-                Array.Copy(_innerArray, index + 1, _innerArray, index, _count - index);
-
-            T item = _innerArray[_count];
-            _innerArray[_count] = default;
-            UpdateVersion();
-            return item;
-        }
 
         public int FindIndex(Predicate<T> predicate)
         {
             for (int i = 0; i < _count; i++)
-            {
                 if (predicate.Invoke(_innerArray[i]))
                     return i;
-            }
             return -1;
         }
 
@@ -334,10 +344,10 @@ namespace TextRenderingSandbox
 
         public void Insert(int index, T item)
         {
-            CheckAccessibility();
+            AssertAccessible();
 
             if (index > Capacity)
-                throw new IndexOutOfRangeException();
+                throw new ArgumentOutOfRangeException(nameof(index));
 
             if (_count == _innerArray.Length)
                 EnsureCapacity(_count + 1);
@@ -358,8 +368,8 @@ namespace TextRenderingSandbox
             if (collection == null)
                 throw new ArgumentNullException(nameof(collection));
 
-            CheckAccessibility();
-            
+            AssertAccessible();
+
             if (collection is ICollection<T> c)
             {
                 int count = c.Count;
@@ -392,7 +402,7 @@ namespace TextRenderingSandbox
             if (index > _count)
                 throw new ArgumentOutOfRangeException(nameof(index));
 
-            CheckAccessibility();
+            AssertAccessible();
 
             if (count > 0)
             {
@@ -411,6 +421,7 @@ namespace TextRenderingSandbox
         {
             // no locks needed, doesn't really matter if we create multiple
             // instances by race conditions
+
             if (_readonly == null)
                 _readonly = new ReadOnlyCollection<T>(this);
             return _readonly;
@@ -420,7 +431,7 @@ namespace TextRenderingSandbox
         {
             if (_innerArray.Length < min)
             {
-                int newCapacity = _innerArray.Length == 0 ? _defaultCapacity : _innerArray.Length * 2;
+                int newCapacity = _innerArray.Length == 0 ? DefaultCapacity : _innerArray.Length * 2;
                 if (newCapacity < min)
                     newCapacity = min;
 
@@ -445,10 +456,8 @@ namespace TextRenderingSandbox
                 get
                 {
                     if (_index == 0 || _index == _list._count + 1)
-                    {
                         throw new InvalidOperationException(
                             "Either MoveNext has not been called or index is beyond item count.");
-                    }
                     return Current;
                 }
             }
@@ -457,15 +466,17 @@ namespace TextRenderingSandbox
             {
                 _list = list;
                 _index = 0;
-                _version = _list.__version;
+                _version = _list._version;
                 Current = default;
             }
 
             public bool MoveNext()
             {
-                if (_version == _list.__version && _index < _list._count)
+                var localList = _list;
+                if (_version == localList._version &&
+                    _index < localList._count)
                 {
-                    Current = _list._innerArray[_index];
+                    Current = localList._innerArray[_index];
                     _index++;
                     return true;
                 }
@@ -474,10 +485,8 @@ namespace TextRenderingSandbox
 
             private bool MoveNextRare()
             {
-                if (_version != _list.__version)
-                {
+                if (_version != _list._version)
                     throw GetVersionException();
-                }
 
                 _index = _list._count + 1;
                 Current = default;
@@ -486,10 +495,8 @@ namespace TextRenderingSandbox
 
             void IEnumerator.Reset()
             {
-                if (_version != _list.__version)
-                {
+                if (_version != _list._version)
                     throw GetVersionException();
-                }
 
                 _index = 0;
                 Current = default;
@@ -498,7 +505,7 @@ namespace TextRenderingSandbox
             private InvalidOperationException GetVersionException()
             {
                 return new InvalidOperationException(
-                    "The underlying list version has changed.");
+                    "The underlying list has changed.");
             }
 
             public void Dispose()

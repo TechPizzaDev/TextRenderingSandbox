@@ -10,8 +10,8 @@ namespace TextRenderingSandbox
         public int Width;
         public int Height;
 
-        public int Area => Width * Height;
-        
+        public readonly int Area => Width * Height;
+
         public Rect(int x, int y, int width, int height)
         {
             X = x;
@@ -20,7 +20,7 @@ namespace TextRenderingSandbox
             Height = height;
         }
 
-        public override string ToString()
+        public readonly override string ToString()
         {
             return $"X: {X}, Y: {Y}, W: {Width}, H: {Height}";
         }
@@ -31,7 +31,7 @@ namespace TextRenderingSandbox
         public Rect Rect;
         public bool IsRotated;
 
-        public override string ToString()
+        public readonly override string ToString()
         {
             return Rect.ToString();
         }
@@ -115,15 +115,11 @@ namespace TextRenderingSandbox
             if (newNode.Rect.Height == 0)
                 return newNode;
 
-            int numRectanglesToProcess = FreeRectangles.Count;
-            for (int i = 0; i < numRectanglesToProcess; ++i)
+            var array = FreeRectangles.InnerArray;
+            for (int i = FreeRectangles.Count; i-- > 0;)
             {
-                if (SplitFreeNode(FreeRectangles[i], newNode.Rect))
-                {
+                if (SplitFreeNode(array[i], newNode.Rect))
                     FreeRectangles.RemoveAt(i);
-                    --i;
-                    --numRectanglesToProcess;
-                }
             }
 
             PruneFreeList();
@@ -139,13 +135,13 @@ namespace TextRenderingSandbox
                 int bestScore1 = int.MaxValue;
                 int bestScore2 = int.MaxValue;
                 int bestRectIndex = -1;
-                var bestNode = new PackedRect();
+                PackedRect bestNode = default;
 
                 for (int i = 0; i < rects.Count; ++i)
                 {
                     int score1 = 0;
                     int score2 = 0;
-                    var newNode = ScoreRect(
+                    PackedRect newNode = ScoreRect(
                         rects[i].Width, rects[i].Height, method, ref score1, ref score2);
 
                     if (score1 < bestScore1 || (score1 == bestScore1 && score2 < bestScore2))
@@ -165,7 +161,7 @@ namespace TextRenderingSandbox
             }
         }
 
-        void PlaceRect(PackedRect node)
+        void PlaceRect(in PackedRect node)
         {
             int numRectanglesToProcess = FreeRectangles.Count;
             for (int i = 0; i < numRectanglesToProcess; ++i)
@@ -184,7 +180,7 @@ namespace TextRenderingSandbox
         }
 
         PackedRect ScoreRect(
-            int width, int height, FreeRectChoiceHeuristic method, 
+            int width, int height, FreeRectChoiceHeuristic method,
             ref int score1, ref int score2)
         {
             score1 = int.MaxValue;
@@ -235,9 +231,12 @@ namespace TextRenderingSandbox
         public float Occupancy()
         {
             ulong usedSurfaceArea = 0;
+            var array = UsedRectangles.InnerArray;
             for (int i = 0; i < UsedRectangles.Count; ++i)
-                usedSurfaceArea += (uint)UsedRectangles[i].Rect.Width * (uint)UsedRectangles[i].Rect.Height;
-
+            {
+                var packed = array[i];
+                usedSurfaceArea += (uint)packed.Rect.Width * (uint)packed.Rect.Height;
+            }
             return (float)usedSurfaceArea / (BinWidth * BinHeight);
         }
 
@@ -247,10 +246,11 @@ namespace TextRenderingSandbox
             bestY = int.MaxValue;
             var bestNode = new PackedRect();
 
+            var array = FreeRectangles.InnerArray;
             for (int i = 0; i < FreeRectangles.Count; ++i)
             {
                 // Try to place the rectangle in upright (non-flipped) orientation.
-                Rect rect = FreeRectangles[i];
+                ref Rect rect = ref array[i];
                 if (rect.Width >= width && rect.Height >= height)
                 {
                     int topSideY = rect.Y + height;
@@ -289,10 +289,11 @@ namespace TextRenderingSandbox
             bestShortSideFit = int.MaxValue;
             var bestNode = new PackedRect();
 
+            var array = FreeRectangles.InnerArray;
             for (int i = 0; i < FreeRectangles.Count; ++i)
             {
                 // Try to place the rectangle in upright (non-flipped) orientation.
-                Rect rect = FreeRectangles[i];
+                ref Rect rect = ref array[i];
                 if (rect.Width >= width && rect.Height >= height)
                 {
                     int leftoverHoriz = Math.Abs(rect.Width - width);
@@ -300,7 +301,7 @@ namespace TextRenderingSandbox
                     int shortSideFit = Math.Min(leftoverHoriz, leftoverVert);
                     int longSideFit = Math.Max(leftoverHoriz, leftoverVert);
 
-                    if (shortSideFit < bestShortSideFit || 
+                    if (shortSideFit < bestShortSideFit ||
                         (shortSideFit == bestShortSideFit && longSideFit < bestLongSideFit))
                     {
                         bestNode.Rect.X = rect.X;
@@ -342,10 +343,11 @@ namespace TextRenderingSandbox
             bestLongSideFit = int.MaxValue;
             var bestNode = new PackedRect();
 
+            var array = FreeRectangles.InnerArray;
             for (int i = 0; i < FreeRectangles.Count; ++i)
             {
                 // Try to place the rectangle in upright (non-flipped) orientation.
-                Rect rect = FreeRectangles[i];
+                ref Rect rect = ref array[i];
                 if (rect.Width >= width && rect.Height >= height)
                 {
                     int leftoverHoriz = Math.Abs(rect.Width - width);
@@ -395,9 +397,10 @@ namespace TextRenderingSandbox
             bestAreaFit = int.MaxValue;
             var bestNode = new PackedRect();
 
+            var array = FreeRectangles.InnerArray;
             for (int i = 0; i < FreeRectangles.Count; ++i)
             {
-                Rect rect = FreeRectangles[i];
+                ref Rect rect = ref array[i];
                 int areaFit = rect.Width * rect.Height - width * height;
 
                 // Try to place the rectangle in upright (non-flipped) orientation.
@@ -462,9 +465,10 @@ namespace TextRenderingSandbox
             if (y == 0 || y + height == BinHeight)
                 score += width;
 
+            var array = UsedRectangles.InnerArray;
             for (int i = 0; i < UsedRectangles.Count; ++i)
             {
-                ref Rect rect = ref UsedRectangles.InnerArray[i].Rect;
+                ref Rect rect = ref array[i].Rect;
                 if (rect.X == x + width || rect.X + rect.Width == x)
                     score += CommonIntervalLength(rect.Y, rect.Y + rect.Height, y, y + height);
 
@@ -517,9 +521,9 @@ namespace TextRenderingSandbox
         bool SplitFreeNode(in Rect freeNode, in Rect usedNode)
         {
             // Test with SAT if the rectangles even intersect.
-            if (usedNode.X >= freeNode.X + freeNode.Width || 
+            if (usedNode.X >= freeNode.X + freeNode.Width ||
                 usedNode.X + usedNode.Width <= freeNode.X ||
-                usedNode.Y >= freeNode.Y + freeNode.Height || 
+                usedNode.Y >= freeNode.Y + freeNode.Height ||
                 usedNode.Y + usedNode.Height <= freeNode.Y)
                 return false;
 
@@ -545,7 +549,7 @@ namespace TextRenderingSandbox
                 }
             }
 
-            if (usedNode.Y < freeNode.Y + freeNode.Height && 
+            if (usedNode.Y < freeNode.Y + freeNode.Height &&
                 usedNode.Y + usedNode.Height > freeNode.Y)
             {
                 // New node at the left side of the used node.
@@ -572,26 +576,21 @@ namespace TextRenderingSandbox
         void PruneFreeList()
         {
             var array = FreeRectangles.InnerArray;
-            int count = FreeRectangles.Count;
-            for (int i = 0; i < count; ++i)
+            for (int i = FreeRectangles.Count; i-- > 0;)
             {
                 ref Rect ri = ref array[i];
-                for (int j = i + 1; j < count; ++j)
+                for (int j = FreeRectangles.Count; j-- > i + 1;)
                 {
                     ref Rect rj = ref array[j];
+
                     if (IsContainedIn(ri, rj))
                     {
                         FreeRectangles.RemoveAt(i);
-                        i--;
-                        count--;
                         break;
                     }
+
                     if (IsContainedIn(rj, ri))
-                    {
                         FreeRectangles.RemoveAt(j);
-                        j--;
-                        count--;
-                    }
                 }
             }
         }
