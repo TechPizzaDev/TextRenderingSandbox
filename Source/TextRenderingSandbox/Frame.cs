@@ -63,10 +63,6 @@ namespace TextRenderingSandbox
         private FontGlyphCacheRegion _glyphCacheRegion = new FontGlyphCacheRegion(1024, 1024);
         private Texture2D _glyphCacheTexture;
 
-        public static readonly Size bigboiSize = new Size(2048, 2048);
-        private byte[] _bigboiData = new byte[bigboiSize.Width * bigboiSize.Height];
-        private Texture2D _bigboiTex;
-
         // FontGlyphCacheRegion - keeps track of packed glyphs
         // FontGlyphCache - contains multiple FontGlyphPackers in a square; can remove a font's glyphs and repack
         // FontGlyphCacheManager - manages multiple FontGlyphCaches; may repack caches to consolidate space
@@ -185,30 +181,6 @@ namespace TextRenderingSandbox
             fontTexture.SetData(result.Bitmap);
 
             _bitmapFont = CreateFont(fontTexture, result);
-
-
-            _bigboiTex = new Texture2D(
-                GraphicsDevice, bigboiSize.Width, bigboiSize.Height, false, SurfaceFormat.Alpha8);
-            Task.Run(() =>
-            {
-                var fontInfo = _droidSansFontInfo;
-
-                var scale = TrueType.ScaleForPixelHeight(fontInfo, bigboiSize.Height);
-
-                var ww = new Stopwatch();
-                ww.Start();
-                for (int i = 0; i < 500; i++)
-                {
-                    TrueType.MakeCodepointBitmap(
-                        fontInfo, _bigboiData,
-                        bigboiSize.Width, bigboiSize.Height, bigboiSize.Width,
-                        scale,
-                        new TrueType.IntPoint(0, 0),
-                        '@');
-                }
-                ww.Stop();
-                Console.WriteLine("Render total: " + ww.ElapsedMilliseconds + "ms");
-            });
         }
 
         private unsafe void FontLoadTest1()
@@ -554,10 +526,6 @@ namespace TextRenderingSandbox
                 float scale = 1.666f; // (float)(Math.Sin(gameTime.TotalGameTime.TotalSeconds * 0.2f) + 1) / 2f * 5 + 0.1f;
 
                 _spriteBatch.Begin(blendState: BlendState.NonPremultiplied, effect: _transparentAlpha8Effect);
-
-                _bigboiTex.SetData(_bigboiData);
-                _spriteBatch.Draw(
-                    _bigboiTex, new Vector2(0, 0), null, Color.White, 0, Vector2.Zero, 0.33f, SpriteEffects.None, 0);
 
                 var font = _bitmapFont;
                 _spriteBatch.Draw(
