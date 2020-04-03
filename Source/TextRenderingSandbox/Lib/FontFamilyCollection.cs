@@ -22,12 +22,34 @@ namespace TextRenderingSandbox
             _families = new Dictionary<string, FontFamily>();
         }
 
-        public bool ContainsKey(string familyName) => _families.ContainsKey(familyName);
-        public bool TryGetValue(string familyName, out FontFamily family) => _families.TryGetValue(familyName, out family);
+        public bool ContainsKey(string familyName)
+        {
+            return _families.ContainsKey(familyName);
+        }
 
-        public Dictionary<string, FontFamily>.Enumerator GetEnumerator() => _families.GetEnumerator();
-        IEnumerator<KeyValuePair<string, FontFamily>> IEnumerable<KeyValuePair<string, FontFamily>>.GetEnumerator() => GetEnumerator();
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+        public bool TryGetValue(string familyName, out FontFamily family)
+        {
+            return _families.TryGetValue(familyName, out family);
+        }
+
+        #region IEnumerator
+
+        public Dictionary<string, FontFamily>.Enumerator GetEnumerator()
+        {
+            return _families.GetEnumerator();
+        }
+
+        IEnumerator<KeyValuePair<string, FontFamily>>
+            IEnumerable<KeyValuePair<string, FontFamily>>.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
+
+        #endregion
     }
-
 }

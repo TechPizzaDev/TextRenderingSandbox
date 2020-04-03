@@ -6,12 +6,14 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using MonoGame.Extended;
 using StbSharp;
 using StbSharp.MonoGame.Test;
+using simd = System.Numerics;
 
 // TODO: sub/super-script text for most fonts
 // https://forum.processing.org/two/discussion/6367/primitive-superscript-subscript-text-rendering
@@ -61,6 +63,10 @@ namespace TextRenderingSandbox
         private FontGlyphCacheRegion _glyphCacheRegion = new FontGlyphCacheRegion(1024, 1024);
         private Texture2D _glyphCacheTexture;
 
+        public static readonly Size bigboiSize = new Size(2048, 2048);
+        private byte[] _bigboiData = new byte[bigboiSize.Width * bigboiSize.Height];
+        private Texture2D _bigboiTex;
+
         // FontGlyphCacheRegion - keeps track of packed glyphs
         // FontGlyphCache - contains multiple FontGlyphPackers in a square; can remove a font's glyphs and repack
         // FontGlyphCacheManager - manages multiple FontGlyphCaches; may repack caches to consolidate space
@@ -90,10 +96,10 @@ namespace TextRenderingSandbox
             _droidSansBytes = File.ReadAllBytes("Fonts/DroidSans.ttf");
             _fontBaker = new FontBaker();
 
-            _watch.Restart();
-            FontLoadTest1();
-            _watch.Stop();
-            Console.WriteLine(nameof(FontLoadTest1) + ": " + Math.Round(_watch.Elapsed.TotalMilliseconds) + "ms");
+            //_watch.Restart();
+            //FontLoadTest1();
+            //_watch.Stop();
+            //Console.WriteLine(nameof(FontLoadTest1) + ": " + Math.Round(_watch.Elapsed.TotalMilliseconds) + "ms");
 
             _watch.Restart();
             LoadBitmapFont();
@@ -102,8 +108,8 @@ namespace TextRenderingSandbox
 
             _transparentAlpha8Effect = Content.Load<Effect>("TransparentAlpha8Effect");
 
-            var systemFonts = SystemFonts.GetSystemFonts();
-            Console.WriteLine("System font count: " + systemFonts.Count);
+            //var systemFonts = SystemFonts.GetSystemFonts();
+            //Console.WriteLine("System font count: " + systemFonts.Count);
 
             //_ranges.Enqueue(CharacterRange.BasicLatin);
             //_ranges.Enqueue(CharacterRange.Latin1Supplement);
@@ -179,6 +185,30 @@ namespace TextRenderingSandbox
             fontTexture.SetData(result.Bitmap);
 
             _bitmapFont = CreateFont(fontTexture, result);
+
+
+            _bigboiTex = new Texture2D(
+                GraphicsDevice, bigboiSize.Width, bigboiSize.Height, false, SurfaceFormat.Alpha8);
+            Task.Run(() =>
+            {
+                var fontInfo = _droidSansFontInfo;
+
+                var scale = TrueType.ScaleForPixelHeight(fontInfo, bigboiSize.Height);
+
+                var ww = new Stopwatch();
+                ww.Start();
+                for (int i = 0; i < 500; i++)
+                {
+                    TrueType.MakeCodepointBitmap(
+                        fontInfo, _bigboiData,
+                        bigboiSize.Width, bigboiSize.Height, bigboiSize.Width,
+                        scale,
+                        new TrueType.IntPoint(0, 0),
+                        '@');
+                }
+                ww.Stop();
+                Console.WriteLine("Render total: " + ww.ElapsedMilliseconds + "ms");
+            });
         }
 
         private unsafe void FontLoadTest1()
@@ -187,7 +217,7 @@ namespace TextRenderingSandbox
             if (!TrueType.InitFont(fontInfo, File.ReadAllBytes("Fonts/DroidSans.ttf"), 0))
                 throw new Exception("Failed to init font.");
 
-            int codepoint = '0';
+            int codepoint = '@';
 
             //byte* bitmapPixels = TrueType.GetCodepointBitmap(
             //    fontInfo, scale, codepoint, out int bmpWidth, out int bmpHeight, out var bmpOffset);
@@ -201,7 +231,7 @@ namespace TextRenderingSandbox
             var scale = TrueType.ScaleForPixelHeight(fontInfo, fontPixelHeight);
 
             var w = new Stopwatch();
-            Thread.Sleep(1000);
+            Thread.Sleep(2000);
 
             w.Restart();
             int execs = 1_000_000;
@@ -217,7 +247,7 @@ namespace TextRenderingSandbox
             }
             w.Stop();
 
-            Thread.Sleep(1000);
+            Thread.Sleep(500);
             Console.WriteLine(
                 "Bitmap: Render time per char: " + Math.Round(w.Elapsed.TotalMilliseconds / execs, 2) + "ms");
 
@@ -342,8 +372,11 @@ namespace TextRenderingSandbox
             if (keyboard.IsKeyDown(Keys.Escape))
                 Exit();
 
-            return;
+            //DoSomeFontStuff();
+        }
 
+        private void DoSomeFontStuff()
+        {
             var font = _ZCOOLXiaoWeiFontInfo;
             var pp = _glyphCacheRegion._packer;
 
@@ -522,8 +555,11 @@ namespace TextRenderingSandbox
 
                 _spriteBatch.Begin(blendState: BlendState.NonPremultiplied, effect: _transparentAlpha8Effect);
 
-                var font = _bitmapFont;
+                _bigboiTex.SetData(_bigboiData);
+                _spriteBatch.Draw(
+                    _bigboiTex, new Vector2(0, 0), null, Color.White, 0, Vector2.Zero, 0.33f, SpriteEffects.None, 0);
 
+                var font = _bitmapFont;
                 _spriteBatch.Draw(
                     font.Texture, new Vector2(0, 0), null, Color.White, 0, Vector2.Zero, scale, SpriteEffects.None, 0);
 
