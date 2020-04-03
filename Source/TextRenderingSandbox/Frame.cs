@@ -200,21 +200,23 @@ namespace TextRenderingSandbox
             float fontPixelHeight = 32;
             var scale = TrueType.ScaleForPixelHeight(fontInfo, fontPixelHeight);
 
-            Thread.Sleep(1000);
             var w = new Stopwatch();
+            Thread.Sleep(1000);
+
             w.Restart();
-            int execs = 1;
+            int execs = 1_000_000;
             for (int zz = 0; zz < execs; zz++)
             {
                 {
                     byte[] pixelse = TrueType.GetCodepointBitmapSubpixel(
-                        fontInfo, scale, new TrueType.Point(0f, 0f), codepoint,
+                        fontInfo, scale, new System.Numerics.Vector2(0f, 0f), codepoint,
                         out int widthe, out int heighte, out var offsete);
 
                     //SaveFontBitmap("wtf.png", widthe, heighte, new Span<byte>(pixelse, widthe * heighte).ToArray());
                 }
             }
             w.Stop();
+
             Thread.Sleep(1000);
             Console.WriteLine(
                 "Bitmap: Render time per char: " + Math.Round(w.Elapsed.TotalMilliseconds / execs, 2) + "ms");
@@ -323,10 +325,10 @@ namespace TextRenderingSandbox
         private struct GlyphResult
         {
             public int Glyph;
-            public TrueType.Point Scale;
+            public System.Numerics.Vector2 Scale;
             public Rect CharRect;
 
-            public GlyphResult(int glyph, TrueType.Point scale, Rect charRect)
+            public GlyphResult(int glyph, System.Numerics.Vector2 scale, Rect charRect)
             {
                 Glyph = glyph;
                 Scale = scale;
@@ -372,7 +374,7 @@ namespace TextRenderingSandbox
 
                         bool succ = _glyphCacheRegion.GetGlyphRect(
                             font, glyph, padding: 0, random.Next(10, 16),
-                            out TrueType.Point scale, out PackedRect packedRect, out Rect charRect);
+                            out var scale, out PackedRect packedRect, out Rect charRect);
 
                         if (succ)
                         {

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Numerics;
 using StbSharp;
 
 namespace TextRenderingSandbox
@@ -36,7 +37,8 @@ namespace TextRenderingSandbox
             _packer = new MaxRectsBinPack(_regionData.Width, _regionData.Height, rotations: false);
         }
 
-        public void DrawGlyph(TrueType.FontInfo fontInfo, int glyph, TrueType.Point scale, Rect charRect)
+        public void DrawGlyph(
+            TrueType.FontInfo fontInfo, int glyph, System.Numerics.Vector2 scale, Rect charRect)
         {
             int width = charRect.Width;
             int height = charRect.Height;
@@ -49,7 +51,7 @@ namespace TextRenderingSandbox
                 height,
                 out_stride: _regionData.Stride,
                 scale,
-                shift: TrueType.Point.Zero,
+                shift: Vector2.Zero,
                 pixelOffset,
                 glyph);
         }
@@ -62,7 +64,7 @@ namespace TextRenderingSandbox
             int padding,
             TrueType.IntPoint oversample,
             float fontSize,
-            out TrueType.Point scale, 
+            out Vector2 scale, 
             out PackedRect packedRect, 
             out Rect charRect)
         {
@@ -73,12 +75,12 @@ namespace TextRenderingSandbox
             if (glyph != 0)
             {
                 TrueType.GetGlyphBitmapBoxSubpixel(
-                    fontInfo, glyph, scale * oversample, TrueType.Point.Zero, out var glyphBox);
+                    fontInfo, glyph, scale * oversample, Vector2.Zero, out var glyphBox);
 
-                if (glyphBox.w != 0 && glyphBox.h != 0)
+                if (glyphBox.W != 0 && glyphBox.H != 0)
                 {
-                    int w = glyphBox.w + padding + oversample.x - 1;
-                    int h = glyphBox.h + padding + oversample.y - 1;
+                    int w = glyphBox.W + padding + oversample.X - 1;
+                    int h = glyphBox.H + padding + oversample.Y - 1;
 
                     int rw = ToNextNearestMultiple(w, 2);
                     int rh = ToNextNearestMultiple(h, 2);
@@ -98,7 +100,7 @@ namespace TextRenderingSandbox
 
         public bool GetGlyphRect(
             TrueType.FontInfo fontInfo, int glyph, int padding, float fontSize,
-            out TrueType.Point scale, out PackedRect packedRect, out Rect charRect)
+            out Vector2 scale, out PackedRect packedRect, out Rect charRect)
         {
             return GetGlyphRect(
                 fontInfo, glyph, padding, new TrueType.IntPoint(1), fontSize,
